@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cardio Calorie Calculator</title>
+<style>
+  /* Basic page styling - feel free to change colors, fonts, spacing */
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 480px;
+    margin: 60px auto;
+    background: #f4f4f4;
+    color: #222;
+  }
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  h1 {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  select, input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+  }
+  .unit-toggle {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .unit-btn {
+    flex: 1;
+    padding: 6px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+  }
+  .unit-btn.active {
+    background: #1d9e75;
+    color: white;
+    border-color: #1d9e75;
+  }
+  .method-toggle {
+    display: flex;
+    gap: 6px;
+    margin-top: 20px;
+  }
+  .method-btn {
+    flex: 1;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+  }
+  .method-btn.active {
+    background: #333;
+    color: white;
+    border-color: #333;
+  }
+  .hr-fields {
+    display: none;
+  }
+  .hr-fields.visible {
+    display: block;
+  }
+  .result-box {
+    margin-top: 24px;
+    background: #eef6f0;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+  .result-number {
+    font-size: 28px;
+    font-weight: bold;
+    color: #1d9e75;
+  }
+  .formula {
+    margin-top: 12px;
+    font-family: monospace;
+    font-size: 13px;
+    color: #666;
+    text-align: center;
+  }
+  .note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #999;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Cardio Calorie Calculator</h1>
+
+  <!-- Method toggle: MET-based (activity lookup) vs heart-rate-based -->
+  <div class="method-toggle">
+    <button type="button" id="method-met" class="method-btn active">By activity (MET)</button>
+    <button type="button" id="method-hr" class="method-btn">By heart rate</button>
+  </div>
+
+  <!-- MET-only field -->
+  <div id="activity-field">
+    <label for="activity">Cardio exercise</label>
+    <select id="activity">
+      <option value="3.5">Walking, brisk (3.5 MET)</option>
+      <option value="7" selected>Jogging (7 MET)</option>
+      <option value="9.8">Running, 6 mph (9.8 MET)</option>
+      <option value="11.5">Running, 7.5 mph (11.5 MET)</option>
+      <option value="7.5">Cycling, moderate (7.5 MET)</option>
+      <option value="6">Swimming, moderate (6 MET)</option>
+      <option value="12.3">Jump rope (12.3 MET)</option>
+      <option value="8.3">Elliptical (8.3 MET)</option>
+    </select>
+  </div>
+
+  <!-- Shared field: weight -->
+  <label for="weight">Weight</label>
+  <div class="unit-toggle">
+    <button type="button" id="unit-kg" class="unit-btn active">kg</button>
+    <button type="button" id="unit-lb" class="unit-btn">lb</button>
+  </div>
+  <input type="number" id="weight" value="70" min="1">
+
+  <!-- Shared field: duration -->
+  <label for="duration">Duration (minutes)</label>
+  <input type="number" id="duration" value="30" min="1">
+
+  <!-- Heart-rate-only fields -->
+  <div id="hr-fields" class="hr-fields">
+    <label for="heartrate">Average heart rate (bpm)</label>
+    <input type="number" id="heartrate" value="140" min="40" max="220">
+
+    <label for="age">Age</label>
+    <input type="number" id="age" value="30" min="10" max="100">
+
+    <label for="sex">Sex</label>
+    <select id="sex">
+      <option value="male">Male</option>
+      <option value="female">Female</option>
+    </select>
+  </div>
+
+  <div class="result-box">
+    <div style="font-size: 13px; color: #888;">Calories burned</div>
+    <div class="result-number" id="result">245 kcal</div>
+  </div>
+
+  <div class="formula" id="formula">7 MET x 70.0 kg x 0.50 hr = 245 kcal</div>
+  <div class="note" id="note">MET values are population averages for the listed activity.</div>
+</div>
+
+<script>
+  // ---- Element references ----
+  const methodMetBtn = document.getElementById('method-met');
+  const methodHrBtn = document.getElementById('method-hr');
+  const activityField = document.getElementById('activity-field');
+  const hrFields = document.getElementById('hr-fields');
+
+  const activityEl = document.getElementById('activity');
+  const weightEl = document.getElementById('weight');
+  const durationEl = document.getElementById('duration');
+  const heartrateEl = document.getElementById('heartrate');
+  const ageEl = document.getElementById('age');
+  const sexEl = document.getElementById('sex');
+
+  const unitKgBtn = document.getElementById('unit-kg');
+  const unitLbBtn = document.getElementById('unit-lb');
+
+  const resultEl = document.getElementById('result');
+  const formulaEl = document.getElementById('formula');
+  const noteEl = document.getElementById('note');
+
+  // ---- State ----
+  // Which weight unit the text box is currently showing.
+  let currentUnit = 'kg';
+  // Which calculation method is active: 'met' or 'hr'.
+  let currentMethod = 'met';
+
+  // ---- Unit conversion helpers ----
+  function poundsToKg(lb) {
+    return lb / 2.20462;
+  }
+  function kgToPounds(kg) {
+    return kg * 2.20462;
+  }
+
+  // ---- Switch between kg and lb ----
+  function setUnit(unit) {
+    const currentKg = currentUnit === 'kg'
+      ? parseFloat(weightEl.value)
+      : poundsToKg(parseFloat(weightEl.value));
+
+    currentUnit = unit;
+
+    if (unit === 'kg') {
+      weightEl.value = Math.round(currentKg * 10) / 10;
+      unitKgBtn.classList.add('active');
+      unitLbBtn.classList.remove('active');
+    } else {
+      weightEl.value = Math.round(kgToPounds(currentKg) * 10) / 10;
+      unitLbBtn.classList.add('active');
+      unitKgBtn.classList.remove('active');
+    }
+
+    calculate();
+  }
+
+  // ---- Switch between MET method and heart-rate method ----
+  function setMethod(method) {
+    currentMethod = method;
+
+    if (method === 'met') {
+      activityField.style.display = 'block';
+      hrFields.classList.remove('visible');
+      methodMetBtn.classList.add('active');
+      methodHrBtn.classList.remove('active');
+    } else {
+      activityField.style.display = 'none';
+      hrFields.classList.add('visible');
+      methodHrBtn.classList.add('active');
+      methodMetBtn.classList.remove('active');
+    }
+
+    calculate();
+  }
+
+  // ---- The actual calculation ----
+  function calculate() {
+    const weightRaw = parseFloat(weightEl.value) || 0;
+    const durationMin = parseFloat(durationEl.value) || 0;
+    const hours = durationMin / 60;
+
+    // The formulas below both need weight in kilograms, regardless of
+    // which unit the text box is currently displaying.
+    const weightKg = currentUnit === 'kg' ? weightRaw : poundsToKg(weightRaw);
+
+    let calories = 0;
+    let formulaText = '';
+
+    if (currentMethod === 'met') {
+      // Simple method: calories = MET x weight(kg) x time(hours)
+      const met = parseFloat(activityEl.value);
+      calories = met * weightKg * hours;
+      formulaText = met + ' MET x ' + weightKg.toFixed(1) + ' kg x ' +
+        hours.toFixed(2) + ' hr = ' + Math.round(calories) + ' kcal';
+      noteEl.textContent = 'MET values are population averages for the listed activity.';
+    } else {
+      // Heart-rate method (Keytel et al., 2005). Different constants for
+      // men and women because average metabolic rates differ by sex.
+      const hr = parseFloat(heartrateEl.value) || 0;
+      const age = parseFloat(ageEl.value) || 0;
+      let caloriesPerMin;
+
+      if (sexEl.value === 'male') {
+        caloriesPerMin = (-55.0969 + (0.6309 * hr) + (0.1988 * weightKg) + (0.2017 * age)) / 4.184;
+      } else {
+        caloriesPerMin = (-20.4022 + (0.4472 * hr) - (0.1263 * weightKg) + (0.074 * age)) / 4.184;
+      }
+
+      calories = caloriesPerMin * durationMin;
+      formulaText = caloriesPerMin.toFixed(2) + ' kcal/min x ' + durationMin + ' min = ' +
+        Math.round(calories) + ' kcal';
+      noteEl.textContent = 'Heart-rate estimate (Keytel formula) - same accuracy as most fitness trackers.';
+    }
+
+    // Never show a negative or garbage result if fields are empty/odd.
+    resultEl.textContent = Math.max(0, Math.round(calories)) + ' kcal';
+    formulaEl.textContent = formulaText;
+  }
+
+  // ---- Wire up events ----
+  methodMetBtn.addEventListener('click', () => setMethod('met'));
+  methodHrBtn.addEventListener('click', () => setMethod('hr'));
+  unitKgBtn.addEventListener('click', () => setUnit('kg'));
+  unitLbBtn.addEventListener('click', () => setUnit('lb'));
+
+  activityEl.addEventListener('change', calculate);
+  weightEl.addEventListener('input', calculate);
+  durationEl.addEventListener('input', calculate);
+  heartrateEl.addEventListener('input', calculate);
+  ageEl.addEventListener('input', calculate);
+  sexEl.addEventListener('change', calculate);
+
+  // Run once on load so the page shows a correct result immediately.
+  calculate();
+</script>
+
+</body>
+</html>
